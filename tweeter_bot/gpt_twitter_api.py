@@ -11,7 +11,7 @@ openai_api_key = os.environ['OPENAI_API_KEY']
 client = OpenAI()
 
 def make_tweet():
-    request = "I am a student who is specializing in AI hardware and Quantum Computing. Write my first Twitter post that introduces me to the public and helps me to gain fame."
+    request = "I am a student who is specializing in AI hardware and Quantum Computing. Write my first Twitter post that introduces me to the public and helps me to gain fame. Write the twitter post in less than 200 characters."
 
     tweet1 = ""
 
