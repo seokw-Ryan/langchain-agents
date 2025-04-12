@@ -1,0 +1,19 @@
+# Package.json for frontend dependencies
+# This file defines the React application's dependencies and scripts
+
+# Main sections:
+# - name, version, description: Basic package info
+# - dependencies: Production dependencies (React, React Router, Axios, etc.)
+# - devDependencies: Development tools (webpack, babel, testing libraries)
+# - scripts: NPM scripts for running, building, and testing the app
+# - browserslist: Target browsers for compatibility
+# - proxy: Backend API URL for development
+
+# Key dependencies include:
+# - react: Core React library
+# - react-dom: DOM-specific React methods
+# - react-router-dom: Routing library
+# - axios: HTTP client for API requests
+# - date-fns: Date manipulation library
+# - react-query: Data fetching and caching
+# - styled-components: CSS-in-JS styling 

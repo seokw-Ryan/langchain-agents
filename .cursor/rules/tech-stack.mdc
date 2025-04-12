@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Tech stack:
+
+1. PostgreSQL – Relational database
+2. Python (FastAPI or Flask) – Backend server and API
+3. React – Frontend user interface
+4. Node.js – Tooling for React (e.g., npm, webpack)
+5. Python tests

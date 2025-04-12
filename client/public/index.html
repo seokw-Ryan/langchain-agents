@@ -1,0 +1,52 @@
+<!-- 
+HTML entry point for the React application
+This file provides the initial HTML structure that the React app mounts into
+
+Key elements:
+- Meta tags for viewport, SEO, and social sharing
+- Title and favicon configuration
+- Root div element where React mounts the application
+- Any non-React scripts or CDN links
+- PWA manifest and icons
+- Font loading
+- Base stylesheet links
+-->
+
+<!-- The structure includes:
+- Responsive viewport configuration
+- Theme color for browser UI
+- Root element with id="root" for React mounting
+- Fallback content for when JavaScript is disabled
+- PWA manifest link
+- External resource imports (fonts, etc.)
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="AI Agent System - A powerful framework for building intelligent agents"
+    />
+    <meta property="og:title" content="AI Agent System" />
+    <meta property="og:description" content="A powerful framework for building intelligent agents" />
+    <meta property="og:type" content="website" />
+    
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <!-- Font loading -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <title>AI Agent System</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!-- This is where the React application will mount -->
+  </body>
+</html> 
