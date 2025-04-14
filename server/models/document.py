@@ -8,7 +8,6 @@ from datetime import datetime
 import uuid
 
 from server.models.db import Base, db_session
-from server.models.user import User
 
 class Document(Base):
     """SQLAlchemy model for document metadata"""
@@ -16,8 +15,8 @@ class Document(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    source = Column(String)
     content = Column(Text)
+    filename = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"))
@@ -28,65 +27,47 @@ class Document(Base):
 
 
 class DocumentChunk(Base):
-    """SQLAlchemy model for document chunks"""
+    """SQLAlchemy model for document chunks with embeddings"""
     __tablename__ = "document_chunks"
     
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("documents.id"))
-    content = Column(Text, nullable=False)
-    embedding_vector = Column(ARRAY(FLOAT))  # Vector embeddings 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    content = Column(Text)
+    embedding = Column(ARRAY(FLOAT))
+    chunk_order = Column(Integer)
     
     # Relationships
     document = relationship("Document", back_populates="chunks")
 
 
-def create_document(title, source, content, user_id):
-    """Factory method to create new document with metadata"""
+def create_document(title, content, user_id, filename=None, db=None):
+    """Factory method to create a new document"""
     document = Document(
         title=title,
-        source=source,
         content=content,
+        filename=filename,
         user_id=user_id
     )
+    
+    if db:
+        db.add(document)
+        db.commit()
+        db.refresh(document)
+    
     return document
 
 
-def chunk_document(document, chunk_size=1000, overlap=200):
-    """Divides document into chunks for embedding"""
-    content = document.content
-    chunks = []
-    
-    # Simple chunking by character count
-    for i in range(0, len(content), chunk_size - overlap):
-        chunk_content = content[i:i + chunk_size]
-        if len(chunk_content) < 50:  # Skip very small chunks
-            continue
-            
-        chunk = DocumentChunk(
-            document_id=document.id,
-            content=chunk_content
-        )
-        chunks.append(chunk)
-    
-    return chunks
+def get_document_by_id(document_id, db=None):
+    """Query helper to find document by ID"""
+    if db:
+        return db.query(Document).filter(Document.id == document_id).first()
+    return db_session.query(Document).filter(Document.id == document_id).first()
 
 
-def search_similar(query_embedding, limit=5):
-    """Finds similar document chunks using vector similarity"""
-    # Using PostgreSQL's vector similarity search with dot product
-    # This requires the pgvector extension
-    chunks = db_session.execute(
-        "SELECT id, content, document_id FROM document_chunks "
-        "ORDER BY embedding_vector <=> :query_embedding LIMIT :limit",
-        {"query_embedding": query_embedding, "limit": limit}
-    ).fetchall()
-    
-    return chunks
-
-
-def get_documents_by_user(user_id):
-    """Query helper to find documents by user ID"""
+def get_user_documents(user_id, db=None):
+    """Query helper to get all documents for a user"""
+    if db:
+        return db.query(Document).filter(Document.user_id == user_id).all()
     return db_session.query(Document).filter(Document.user_id == user_id).all()
 
 # The model includes:

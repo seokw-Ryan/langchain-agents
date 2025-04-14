@@ -12,10 +12,7 @@ import AuthLayout from './layouts/AuthLayout';
 
 // Pages
 import Dashboard from './pages/Dashboard';
-import AgentBuilder from './pages/AgentBuilder';
-import AgentList from './pages/AgentList';
 import Login from './pages/Login';
-import Signup from './pages/Signup';
 import NotFound from './pages/NotFound';
 
 // Protected route component that requires authentication
@@ -43,10 +40,9 @@ const App = () => {
   
   return (
     <Routes>
-      {/* Public routes with AuthLayout */}
+      {/* Public route for login */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
       </Route>
       
       {/* Protected routes with MainLayout */}
@@ -56,12 +52,10 @@ const App = () => {
         </ProtectedRoute>
       }>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/agents" element={<AgentList />} />
-        <Route path="/agents/builder" element={<AgentBuilder />} />
       </Route>
       
       {/* Redirect from root to dashboard */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to="/" replace />} />
       
       {/* 404 page */}
       <Route path="*" element={<NotFound />} />

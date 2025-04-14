@@ -8,7 +8,7 @@ from pydantic import BaseModel
 import uuid
 
 from server.models.db import get_db
-from server.models.user import User
+from server.models.user import User, get_user_by_username
 from server.models.document import Document, create_document
 from server.services.langchain_service import (
     DocumentProcessor, 
@@ -24,26 +24,54 @@ router = APIRouter()
 class QueryRequest(BaseModel):
     query: str
     conversation_id: Optional[str] = None
+    username: Optional[str] = None  # Add username field for direct access
 
 class QueryResponse(BaseModel):
     response: str
-    sources: Optional[List[str]] = None
+    sources: List[str] = []
     conversation_id: Optional[str] = None
 
 class ConversationHistory(BaseModel):
     conversation_id: str
     messages: List[dict]
 
+# Helper function to get user by username for public endpoints
+async def get_user_by_username_param(username: str, db: Session):
+    if not username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username is required"
+        )
+        
+    user = get_user_by_username(username, db)
+    if not user:
+        # Create user if they don't exist
+        from server.models.user import create_user_with_username
+        user = create_user_with_username(username, db)
+        
+    return user
+
 @router.post("/research", response_model=QueryResponse)
 async def research(
     query_request: QueryRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Perform document retrieval and answer questions"""
+    # Get user either from token or username param
+    user = current_user
+    if not user and query_request.username:
+        user = await get_user_by_username_param(query_request.username, db)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+    
     # Initialize the retrieval chain
     retrieval_service = RetrievalService()
-    retrieval_chain = retrieval_service.get_retrieval_chain(user_id=current_user.id)
+    retrieval_chain = retrieval_service.get_retrieval_chain(user_id=user.id)
     
     # Process the query
     result = retrieval_chain({"query": query_request.query})
@@ -59,7 +87,7 @@ async def research(
 @router.post("/guidance", response_model=QueryResponse)
 async def guidance(
     query_request: QueryRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Provide personalized life guidance"""
@@ -80,17 +108,28 @@ async def guidance(
 @router.post("/chat", response_model=QueryResponse)
 async def chat(
     query_request: QueryRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Handle multi-turn conversations with context"""
+    # Get user either from token or username param
+    user = current_user
+    if not user and query_request.username:
+        user = await get_user_by_username_param(query_request.username, db)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+        
     # Initialize the conversation service
     conversation_service = ConversationService()
     
     # Get or create conversation chain
     conversation_id = query_request.conversation_id or str(uuid.uuid4())
     conversation_chain = conversation_service.get_conversation_chain(
-        user_id=current_user.id,
+        user_id=user.id,
         conversation_id=conversation_id
     )
     
@@ -107,7 +146,7 @@ async def chat(
 
 @router.get("/history", response_model=List[ConversationHistory])
 async def get_history(
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Retrieve conversation history"""
@@ -116,35 +155,43 @@ async def get_history(
     
     return histories
 
-@router.post("/document", status_code=status.HTTP_201_CREATED)
+@router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
     title: str = Form(...),
-    source: Optional[str] = Form(None),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user),
+    username: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
-    """Upload and process new documents for the knowledge base"""
-    # Process the document
-    document_processor = DocumentProcessor()
+    """Upload and process a document for the knowledge base"""
+    # Get user either from token or username param
+    user = current_user
+    if not user and username:
+        user = await get_user_by_username_param(username, db)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+    
+    # Read file content
     content = await file.read()
     
-    # Extract text from the document
-    text = document_processor.extract_text(content, file.filename)
+    # Process document
+    processor = DocumentProcessor()
+    text_content = processor.extract_text(content, file.filename)
     
-    # Create document in database
+    # Create document record
     document = create_document(
         title=title,
-        source=source or file.filename,
-        content=text,
-        user_id=current_user.id
+        content=text_content,
+        filename=file.filename,
+        user_id=user.id,
+        db=db
     )
     
-    db.add(document)
-    db.commit()
-    db.refresh(document)
+    # Process and embed document
+    processor.process_document(document)
     
-    # Process and create embeddings
-    document_processor.process_document(document)
-    
-    return {"message": "Document uploaded and processed successfully", "document_id": document.id} 
+    return {"message": "Document uploaded and processed successfully"} 

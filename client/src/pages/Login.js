@@ -4,15 +4,13 @@ import {
   Button, 
   Typography, 
   Box, 
-  Link,
   CircularProgress
 } from '@mui/material';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -21,23 +19,23 @@ const Login = () => {
     e.preventDefault();
     setError('');
     
-    if (!email || !password) {
-      setError('Please fill in all fields');
+    if (!username) {
+      setError('Please enter your username');
       return;
     }
     
-    const success = await login(email, password);
+    const success = await login(username);
     if (success) {
       navigate('/');
     } else {
-      setError('Invalid email or password');
+      setError('Failed to login. Please try again.');
     }
   };
 
   return (
     <Box sx={{ width: '100%' }}>
       <Typography component="h1" variant="h5" align="center" gutterBottom>
-        Sign In
+        Welcome
       </Typography>
       
       {error && (
@@ -51,25 +49,13 @@ const Login = () => {
           margin="normal"
           required
           fullWidth
-          id="email"
-          label="Email Address"
-          name="email"
-          autoComplete="email"
+          id="username"
+          label="Your Name"
+          name="username"
+          autoComplete="name"
           autoFocus
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <TextField
-          margin="normal"
-          required
-          fullWidth
-          name="password"
-          label="Password"
-          type="password"
-          id="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
         />
         <Button
           type="submit"
@@ -78,13 +64,8 @@ const Login = () => {
           sx={{ mt: 3, mb: 2 }}
           disabled={isLoading}
         >
-          {isLoading ? <CircularProgress size={24} /> : 'Sign In'}
+          {isLoading ? <CircularProgress size={24} /> : 'Continue'}
         </Button>
-        <Box sx={{ textAlign: 'center' }}>
-          <Link component={RouterLink} to="/signup" variant="body2">
-            {"Don't have an account? Sign Up"}
-          </Link>
-        </Box>
       </Box>
     </Box>
   );

@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import axios from 'axios';
+import React, { createContext, useState, useContext, useCallback } from 'react';
 
 // Create context
 const AuthContext = createContext();
@@ -16,14 +15,13 @@ export const AuthProvider = ({ children }) => {
   const checkAuthState = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Check token in localStorage
-      const token = localStorage.getItem('auth_token');
+      // Check username in localStorage
+      const username = localStorage.getItem('username');
       
-      if (token) {
-        // For now, just simulate successful auth check
-        // In production, you'd validate the token with your backend
+      if (username) {
+        // Set user with the stored username
         setIsAuthenticated(true);
-        setUser({ id: '1', name: 'Demo User' });
+        setUser({ name: username });
       } else {
         setIsAuthenticated(false);
         setUser(null);
@@ -37,15 +35,18 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Login function
-  const login = async (email, password) => {
+  // Login function that only requires username
+  const login = async (username) => {
     setIsLoading(true);
     try {
-      // In a real app, make an API call to your auth endpoint
-      // For now, just simulate a successful login
-      localStorage.setItem('auth_token', 'demo_token');
+      if (!username.trim()) {
+        return false;
+      }
+      
+      // Store username in localStorage
+      localStorage.setItem('username', username);
       setIsAuthenticated(true);
-      setUser({ id: '1', name: 'Demo User' });
+      setUser({ name: username });
       return true;
     } catch (error) {
       console.error('Login failed:', error);
@@ -57,24 +58,9 @@ export const AuthProvider = ({ children }) => {
 
   // Logout function
   const logout = () => {
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem('username');
     setIsAuthenticated(false);
     setUser(null);
-  };
-
-  // Register function
-  const register = async (name, email, password) => {
-    setIsLoading(true);
-    try {
-      // In a real app, make an API call to your register endpoint
-      // For now, just simulate a successful registration
-      return true;
-    } catch (error) {
-      console.error('Registration failed:', error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Auth context value
@@ -84,8 +70,7 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     checkAuthState,
     login,
-    logout,
-    register
+    logout
   };
 
   return (
@@ -93,4 +78,6 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-}; 
+};
+
+export default AuthContext; 
