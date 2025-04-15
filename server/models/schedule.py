@@ -8,7 +8,7 @@ import enum
 import pytz
 import uuid
 
-from server.models.db import Base, db_session
+from models.db import Base, db_session
 
 class AttendeeStatus(enum.Enum):
     PENDING = "pending"

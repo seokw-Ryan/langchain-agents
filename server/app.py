@@ -18,8 +18,8 @@ import os
 import uvicorn
 from dotenv import load_dotenv
 
-from server.models.db import init_db
-from server.routers import auth, agent, schedule
+from models.db import init_db
+from routers import auth, agent, schedule
 
 def create_app() -> FastAPI:
     """Creates and configures the FastAPI application"""

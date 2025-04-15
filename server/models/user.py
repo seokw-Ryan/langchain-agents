@@ -4,8 +4,9 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from passlib.context import CryptContext
 
-from server.models.db import Base, db_session
+from models.db import Base, db_session
 
 class User(Base):
     """SQLAlchemy model representing user accounts"""

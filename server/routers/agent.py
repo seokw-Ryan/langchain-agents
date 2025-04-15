@@ -5,18 +5,22 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
-import uuid
+from datetime import datetime
 
-from server.models.db import get_db
-from server.models.user import User, get_user_by_username
-from server.models.document import Document, create_document
-from server.services.langchain_service import (
-    DocumentProcessor, 
-    RetrievalService, 
+from models.db import get_db
+from models.user import User, get_user_by_username
+from models.document import Document, create_document
+from services.langchain_service import (
+    DocumentProcessor,
+    VectorStoreService,
+    RetrievalService,
     ConversationService,
     AgentService
 )
-from server.routers.auth import get_current_user
+from routers.auth import get_current_user
+from uuid import uuid4
+
+from models.user import create_user_with_username
 
 router = APIRouter()
 
@@ -46,7 +50,6 @@ async def get_user_by_username_param(username: str, db: Session):
     user = get_user_by_username(username, db)
     if not user:
         # Create user if they don't exist
-        from server.models.user import create_user_with_username
         user = create_user_with_username(username, db)
         
     return user
@@ -127,7 +130,7 @@ async def chat(
     conversation_service = ConversationService()
     
     # Get or create conversation chain
-    conversation_id = query_request.conversation_id or str(uuid.uuid4())
+    conversation_id = query_request.conversation_id or str(uuid4())
     conversation_chain = conversation_service.get_conversation_chain(
         user_id=user.id,
         conversation_id=conversation_id

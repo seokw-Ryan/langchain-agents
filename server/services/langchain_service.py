@@ -117,7 +117,7 @@ class RetrievalService:
         self.vector_store_service = VectorStoreService()
         self.llm = ChatOpenAI(
             temperature=0,
-            model_name="gpt-4",
+            model_name="gpt-4o-mini",
             openai_api_key=OPENAI_API_KEY
         )
     
@@ -143,7 +143,7 @@ class ConversationService:
     def __init__(self):
         self.llm = ChatOpenAI(
             temperature=0.7,
-            model_name="gpt-4",
+            model_name="gpt-4o-mini",
             openai_api_key=OPENAI_API_KEY
         )
     
@@ -181,7 +181,7 @@ class ConversationService:
 class LanguageModelService:
     """Provides interface to underlying LLM APIs"""
     
-    def __init__(self, model_name: str = "gpt-4", temperature: float = 0.7):
+    def __init__(self, model_name: str = "gpt-4o", temperature: float = 0.7):
         self.llm = ChatOpenAI(
             temperature=temperature,
             model_name=model_name,
@@ -205,7 +205,7 @@ class AgentService:
     def __init__(self):
         self.llm = ChatOpenAI(
             temperature=0.7,
-            model_name="gpt-4",
+            model_name="gpt-4.1",
             openai_api_key=OPENAI_API_KEY
         )
         self.retrieval_service = RetrievalService()

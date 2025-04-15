@@ -7,11 +7,11 @@ from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime, date, timedelta
 
-from server.models.db import get_db
-from server.models.user import User
-from server.models.schedule import Schedule, create_schedule_item, get_user_schedule, check_conflicts
-from server.services.scheduling_service import ScheduleOptimizer
-from server.routers.auth import get_current_user
+from models.db import get_db
+from models.user import User
+from models.schedule import Schedule, create_schedule_item, get_user_schedule, check_conflicts
+from services.scheduling_service import ScheduleOptimizer
+from routers.auth import get_current_user
 
 router = APIRouter()
 

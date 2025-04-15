@@ -1,7 +1,7 @@
 # Database connection configuration
 # This file sets up SQLAlchemy and PostgreSQL connection with pgvector support
 
-from sqlalchemy import create_engine as sa_create_engine
+from sqlalchemy import create_engine as sa_create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 import os
@@ -65,7 +65,7 @@ def init_db():
     """Initializes database tables and applies migrations"""
     # Enable pgvector extension if it doesn't exist
     with engine.connect() as conn:
-        conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         conn.commit()
     
     # Create all tables

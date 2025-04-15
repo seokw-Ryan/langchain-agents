@@ -23,8 +23,8 @@ from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
 
-from server.models.db import get_db
-from server.models.user import User, create_user_with_username, get_user_by_username
+from models.db import get_db
+from models.user import User, create_user_with_username, get_user_by_username
 
 # Load environment variables
 load_dotenv()

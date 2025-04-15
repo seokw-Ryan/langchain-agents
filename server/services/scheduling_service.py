@@ -8,7 +8,7 @@ import requests
 import json
 from dataclasses import dataclass
 
-from server.models.schedule import Schedule, get_user_schedule, check_conflicts
+from models.schedule import Schedule, get_user_schedule, check_conflicts
 
 @dataclass
 class ScheduleRecommendation:
