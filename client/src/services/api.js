@@ -17,14 +17,15 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Helper to get username from localStorage
-const getUsername = () => localStorage.getItem('username');
+// Helper to always return 'Ryan' as the username
+const getUsername = () => 'Ryan';
 
 // API service functions
 const apiService = {
   // Chat with the agent
   chat: async (query, conversationId = null) => {
     const username = getUsername();
+    console.log('Sending chat request with username:', username);
     const response = await apiClient.post('/api/v1/agent/chat', {
       query,
       conversation_id: conversationId,
@@ -36,6 +37,7 @@ const apiService = {
   // Research using RAG
   research: async (query) => {
     const username = getUsername();
+    console.log('Sending research request with username:', username);
     const response = await apiClient.post('/api/v1/agent/research', {
       query,
       username
@@ -51,6 +53,7 @@ const apiService = {
     formData.append('title', title);
     formData.append('username', username);
 
+    console.log('Uploading document with username:', username);
     const response = await apiClient.post('/api/v1/agent/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -62,6 +65,7 @@ const apiService = {
   // Get conversation history
   getHistory: async () => {
     const username = getUsername();
+    console.log('Getting history with username:', username);
     const response = await apiClient.get(`/api/v1/agent/history?username=${username}`);
     return response.data;
   }

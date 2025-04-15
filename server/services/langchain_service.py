@@ -6,23 +6,90 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import PGVector
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
-from langchain.chains import RetrievalQA, ConversationChain
+from langchain.chains import RetrievalQA, ConversationChain as LangChainConversationChain
 from langchain.chains.question_answering import load_qa_chain
 from langchain.memory import ConversationBufferMemory, PostgresChatMessageHistory
 from langchain.prompts import PromptTemplate
 from langchain.agents import initialize_agent, AgentType, Tool
 import os
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import tempfile
 import uuid
+import logging
 from dotenv import load_dotenv
+from openai import OpenAI
+
+# Setup logging
+logger = logging.getLogger("uvicorn")
 
 # Load environment variables
+logger.info("DEBUG-STARTUP: Loading environment variables")
 load_dotenv()
 
 # Initialize OpenAI API key
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-PGVECTOR_CONNECTION_STRING = os.getenv("PGVECTOR_CONNECTION_STRING", "postgresql://postgres:postgres@localhost:5432/langchain_agents")
+PGVECTOR_CONNECTION_STRING = os.getenv("PGVECTOR_CONNECTION_STRING", "postgresql://postgres:postgres@postgres:5432/langchain_agents")
+
+# Debug environment
+logger.info(f"DEBUG-STARTUP: OPENAI_API_KEY is {'set' if OPENAI_API_KEY else 'NOT SET'}")
+if OPENAI_API_KEY:
+    logger.info(f"DEBUG-STARTUP: OPENAI_API_KEY starts with {OPENAI_API_KEY[:5]} and ends with {OPENAI_API_KEY[-4:]}")
+logger.info(f"DEBUG-STARTUP: PGVECTOR_CONNECTION_STRING is {'set' if PGVECTOR_CONNECTION_STRING else 'NOT SET'}")
+
+# Initialize OpenAI client
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+# Custom ConversationChain that uses OpenAI API directly
+class ConversationChain(LangChainConversationChain):
+    def _call(self, inputs: Dict[str, Any]) -> Dict[str, str]:
+        logger.info(f"DEBUG-CHAIN: ConversationChain _call with inputs: {inputs}")
+        try:
+            # Get all unique memory variables used in prompt
+            memory_keys = self.memory.memory_variables
+
+            # Load memory variables
+            memory_values = self.memory.load_memory_variables({})
+            logger.info(f"DEBUG-CHAIN: Loaded memory variables: {memory_values}")
+            
+            # Prepare messages for OpenAI API
+            messages = [{"role": "system", "content": "You are a helpful assistant."}]
+            
+            # Add history if available
+            if 'history' in memory_values and memory_values['history']:
+                # Convert LangChain message format to OpenAI format if needed
+                for message in memory_values['history']:
+                    if hasattr(message, 'type') and hasattr(message, 'content'):
+                        role = "assistant" if message.type == "ai" else "user"
+                        messages.append({"role": role, "content": message.content})
+            
+            # Add current user input
+            messages.append({"role": "user", "content": inputs.get('input', '')})
+            
+            logger.info(f"DEBUG-CHAIN: Prepared messages for OpenAI API: {messages}")
+            logger.info("DEBUG-CHAIN: About to call OpenAI API")
+            
+            # Call OpenAI API directly using the client
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-4.1-mini",  # Use the model specified in your ConversationService
+                    messages=messages,
+                    temperature=0.7
+                )
+                assistant_response = response.choices[0].message.content
+                logger.info(f"DEBUG-CHAIN: Got response from OpenAI API: {assistant_response[:50]}...")
+            except Exception as e:
+                logger.error(f"DEBUG-CHAIN: ERROR in OpenAI API call: {str(e)}")
+                raise
+            
+            # Save context - use only output key as expected by LangChain
+            outputs = {"output": assistant_response}
+            # Save the new message to memory
+            self.memory.save_context(inputs, outputs)
+            
+            return outputs
+        except Exception as e:
+            logger.error(f"DEBUG-CHAIN: Unexpected error in conversation chain: {str(e)}")
+            raise
 
 class DocumentProcessor:
     """Handles document loading and chunking"""
@@ -117,7 +184,7 @@ class RetrievalService:
         self.vector_store_service = VectorStoreService()
         self.llm = ChatOpenAI(
             temperature=0,
-            model_name="gpt-4o-mini",
+            model_name="gpt-4.1-mini",
             openai_api_key=OPENAI_API_KEY
         )
     
@@ -141,34 +208,49 @@ class ConversationService:
     """Manages conversational context and memory"""
     
     def __init__(self):
-        self.llm = ChatOpenAI(
-            temperature=0.7,
-            model_name="gpt-4o-mini",
-            openai_api_key=OPENAI_API_KEY
-        )
+        logger.info("DEBUG-CONV-SERVICE: Initializing ConversationService")
+        try:
+            # We'll keep the LLM instance for compatibility with other code
+            self.llm = ChatOpenAI(
+                temperature=0.7,
+                model_name="gpt-4.1-mini",
+                openai_api_key=OPENAI_API_KEY
+            )
+            logger.info(f"DEBUG-CONV-SERVICE: ChatOpenAI initialized with API key: {OPENAI_API_KEY[:5]}...{OPENAI_API_KEY[-4:] if OPENAI_API_KEY else 'None'}")
+        except Exception as e:
+            logger.error(f"DEBUG-CONV-SERVICE: ERROR initializing ChatOpenAI: {str(e)}")
+            raise
     
     def get_conversation_chain(self, user_id: int, conversation_id: str):
         """Initialize chain for stateful conversations"""
-        # Create or get conversation memory
-        message_history = PostgresChatMessageHistory(
-            connection_string=PGVECTOR_CONNECTION_STRING,
-            session_id=conversation_id,
-            table_name="conversation_history"
-        )
-        
-        memory = ConversationBufferMemory(
-            chat_memory=message_history,
-            return_messages=True
-        )
-        
-        # Create the conversation chain
-        conversation = ConversationChain(
-            llm=self.llm,
-            memory=memory,
-            verbose=True
-        )
-        
-        return conversation
+        logger.info(f"DEBUG-CONV-SERVICE: get_conversation_chain called for user_id: {user_id}, conversation_id: {conversation_id}")
+        try:
+            # Uncomment and fix the PostgresChatMessageHistory if you want to use it
+            # message_history = PostgresChatMessageHistory(
+            #     connection_string=PGVECTOR_CONNECTION_STRING,
+            #     session_id=conversation_id,
+            #     table_name="conversation_history"
+            # )
+            
+            # Use a regular memory buffer instead of PostgreSQL
+            memory = ConversationBufferMemory(
+                # chat_memory=message_history,
+                return_messages=True
+            )
+            logger.info("DEBUG-CONV-SERVICE: Created ConversationBufferMemory")
+            
+            # Create the conversation chain
+            conversation = ConversationChain(
+                llm=self.llm,  # This will be ignored in our implementation
+                memory=memory,
+                verbose=True
+            )
+            logger.info("DEBUG-CONV-SERVICE: Created ConversationChain")
+            
+            return conversation
+        except Exception as e:
+            logger.error(f"DEBUG-CONV-SERVICE: ERROR in get_conversation_chain: {str(e)}")
+            raise
     
     def get_user_conversations(self, user_id: int):
         """Retrieve conversation history for a user"""
@@ -181,22 +263,37 @@ class ConversationService:
 class LanguageModelService:
     """Provides interface to underlying LLM APIs"""
     
-    def __init__(self, model_name: str = "gpt-4o", temperature: float = 0.7):
-        self.llm = ChatOpenAI(
-            temperature=temperature,
-            model_name=model_name,
-            openai_api_key=OPENAI_API_KEY
-        )
+    def __init__(self, model_name: str = "gpt-4.1-mini", temperature: float = 0.7):
+        self.model_name = model_name
+        self.temperature = temperature
     
     def generate_response(self, prompt: str):
         """Generate response from the language model"""
-        return self.llm.predict(prompt)
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt}
+        ]
+        response = client.chat.completions.create(
+            model=self.model_name,
+            messages=messages,
+            temperature=self.temperature
+        )
+        return response.choices[0].message.content
     
     def generate_structured_output(self, prompt: str, output_schema: dict):
         """Generate structured output based on schema"""
         # This would use function calling or other techniques
         # to generate structured output
-        return self.llm.predict(prompt)
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant that provides structured output."},
+            {"role": "user", "content": prompt}
+        ]
+        response = client.chat.completions.create(
+            model=self.model_name,
+            messages=messages,
+            temperature=self.temperature
+        )
+        return response.choices[0].message.content
 
 
 class AgentService:
@@ -205,7 +302,7 @@ class AgentService:
     def __init__(self):
         self.llm = ChatOpenAI(
             temperature=0.7,
-            model_name="gpt-4.1",
+            model_name="gpt-4.1-mini",
             openai_api_key=OPENAI_API_KEY
         )
         self.retrieval_service = RetrievalService()

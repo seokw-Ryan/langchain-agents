@@ -14,8 +14,9 @@
 # - verify_password(): Validate password against stored hash
 # - get_current_user(): Dependency to extract and validate user from token 
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.security.utils import get_authorization_scheme_param
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from jose import JWTError, jwt
@@ -33,7 +34,26 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30 * 24 * 60  # 30 days
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
+
+# Create a truly optional OAuth2 scheme that won't raise exceptions
+class OptionalOAuth2PasswordBearer:
+    def __init__(self, tokenUrl: str):
+        self.tokenUrl = tokenUrl
+        self.scheme_name = "Bearer"
+
+    async def __call__(self, request: Request):
+        authorization = request.headers.get("Authorization")
+        if not authorization:
+            return None
+            
+        scheme, param = get_authorization_scheme_param(authorization)
+        if scheme.lower() != "bearer":
+            return None
+            
+        return param
+
+# Use our custom optional OAuth2 scheme
+oauth2_scheme = OptionalOAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
 # Pydantic models for request/response
 class UserLogin(BaseModel):
@@ -80,22 +100,30 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         headers={"WWW-Authenticate": "Bearer"},
     )
     
+    if token is None:
+        return None
+        
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         
         if username is None:
-            raise credentials_exception
+            return None
             
     except JWTError:
-        raise credentials_exception
+        return None
         
     user = get_user_by_username(username, db)
     
     if user is None:
-        raise credentials_exception
+        return None
         
     return user
+
+# We don't need this separate function anymore since get_current_user now returns None on failure
+async def get_optional_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """Dependency that tries to get current user but returns None if authentication fails"""
+    return await get_current_user(token, db)
 
 @router.post("/signup", response_model=UserResponse)
 async def signup(user_data: UserCreate, db: Session = Depends(get_db)):
@@ -139,6 +167,11 @@ async def login(user_login: UserLogin, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
     """Get current user information"""
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
     return {"username": current_user.username}
 
 @router.post("/change-password", response_model=UserResponse)
@@ -148,6 +181,12 @@ async def change_password(
     db: Session = Depends(get_db)
 ):
     """Change user password"""
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+        
     if not current_user.verify_password(password_data.current_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

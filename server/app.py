@@ -53,6 +53,24 @@ def setup_middleware(app: FastAPI):
 def configure_db():
     """Initializes database connection"""
     init_db()
+    
+    # Create Ryan user at startup
+    from models.db import db_session
+    from models.user import get_user_by_username, create_user_with_username
+    
+    # Get session from our db_session function
+    session = db_session()
+    
+    # Create Ryan user if not exists
+    ryan_user = get_user_by_username("Ryan", session)
+    if not ryan_user:
+        ryan_user = create_user_with_username("Ryan", session)
+        print("Created user 'Ryan' at startup")
+    else:
+        print("User 'Ryan' already exists")
+        
+    # Close the session
+    session.close()
 
 app = create_app()
 

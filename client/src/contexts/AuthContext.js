@@ -7,60 +7,63 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  // Set initial state to authenticated with Ryan user
+  const [user, setUser] = useState({ name: 'Ryan' });
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Function to check if user is authenticated (e.g., on app load)
   const checkAuthState = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Check username in localStorage
-      const username = localStorage.getItem('username');
+      // Always set the Ryan user in localStorage
+      localStorage.setItem('username', 'Ryan');
       
-      if (username) {
-        // Set user with the stored username
-        setIsAuthenticated(true);
-        setUser({ name: username });
-      } else {
-        setIsAuthenticated(false);
-        setUser(null);
-      }
+      // Always authenticated with Ryan user
+      setIsAuthenticated(true);
+      setUser({ name: 'Ryan' });
     } catch (error) {
       console.error('Auth check failed:', error);
-      setIsAuthenticated(false);
-      setUser(null);
+      // Even if there's an error, still set to authenticated
+      setIsAuthenticated(true);
+      setUser({ name: 'Ryan' });
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Login function that only requires username
+  // Login function that automatically succeeds with the Ryan user
   const login = async (username) => {
     setIsLoading(true);
     try {
-      if (!username.trim()) {
-        return false;
-      }
-      
-      // Store username in localStorage
-      localStorage.setItem('username', username);
+      const fixedUsername = 'Ryan';
+      // Store Ryan username in localStorage
+      localStorage.setItem('username', fixedUsername);
       setIsAuthenticated(true);
-      setUser({ name: username });
+      setUser({ name: fixedUsername });
       return true;
     } catch (error) {
       console.error('Login failed:', error);
-      return false;
+      // Even if there's an error, still set to authenticated
+      setIsAuthenticated(true);
+      setUser({ name: 'Ryan' });
+      return true;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Logout function
+  // Logout function - we'll keep this for UI consistency but it won't actually log out
   const logout = () => {
-    localStorage.removeItem('username');
-    setIsAuthenticated(false);
-    setUser(null);
+    // Don't remove username from localStorage
+    // Don't set isAuthenticated to false
+    // Just for UI, show a temporary logged out state, then auto-login again
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsAuthenticated(true);
+      setUser({ name: 'Ryan' });
+      setIsLoading(false);
+    }, 500);
   };
 
   // Auth context value

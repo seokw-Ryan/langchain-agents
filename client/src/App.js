@@ -15,18 +15,15 @@ import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
 
-// Protected route component that requires authentication
+// Protected route component that always allows access
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   
   if (isLoading) {
     return <Box>Loading...</Box>;
   }
   
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  
+  // Always render children without checking authentication
   return children;
 };
 
@@ -42,7 +39,7 @@ const App = () => {
     <Routes>
       {/* Public route for login */}
       <Route element={<AuthLayout />}>
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<Navigate to="/" replace />} />
       </Route>
       
       {/* Protected routes with MainLayout */}
